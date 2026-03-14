@@ -1,13 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, Button, StyleSheet, ScrollView } from "react-native";
 import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol-web3js";
-import {
-  Connection,
-  PublicKey,
-  VersionedTransaction,
-  TransactionMessage,
-  SystemProgram,
-} from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { toByteArray } from "react-native-quick-base64";
 
 const APP_IDENTITY = {
@@ -18,72 +13,30 @@ const APP_IDENTITY = {
 
 const connection = new Connection("https://api.devnet.solana.com", "confirmed");
 
-async function testSendTransaction(log: (msg: string) => void) {
-  log("Building transaction...");
+async function getTokenBalance(
+  connection: Connection,
+  walletAddress: PublicKey,
+  mintAddress: PublicKey,
+): Promise<number> {
+  // Derive the Associated Token Account address
+  const ata = await getAssociatedTokenAddress(mintAddress, walletAddress);
 
-  await transact(async (wallet) => {
-    const result = await wallet.authorize({
-      identity: APP_IDENTITY,
-      chain: "solana:devnet",
-    });
-
-    const publicKey = new PublicKey(toByteArray(result.accounts[0].address));
-
-    log(`Using account: ${publicKey.toBase58()}`);
-
-    // Check balance
-    const balance = await connection.getBalance(publicKey);
-    log(`Balance: ${balance / 1e9} SOL`);
-
-    if (balance < 0.001 * 1e9) {
-      log("ERROR: Insufficient balance for test");
-      return;
-    }
-
-    // Build transaction (send 0.001 SOL to self)
-    const { blockhash, lastValidBlockHeight } =
-      await connection.getLatestBlockhash();
-
-    const transaction = new VersionedTransaction(
-      new TransactionMessage({
-        payerKey: publicKey,
-        recentBlockhash: blockhash,
-        instructions: [
-          SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: publicKey, // Send to self
-            lamports: 0.001 * 1e9,
-          }),
-        ],
-      }).compileToV0Message(),
-    );
-
-    log("Signing transaction...");
-
-    // Step 4: Sign and send
-    const [signedTransaction] = await wallet.signTransactions({
-      transactions: [transaction],
-    });
-    const signature = await connection.sendRawTransaction(
-      signedTransaction.serialize(),
-    );
-
-    log(`Signature: ${signature}`);
-
-    // Confirm
-    log("Waiting for confirmation...");
-    const confirmation = await connection.confirmTransaction(
-      { signature, blockhash, lastValidBlockHeight },
-      "confirmed",
-    );
-
-    if (confirmation.value.err) {
-      log(`ERROR: ${JSON.stringify(confirmation.value.err)}`);
-    } else {
-      log("Transaction confirmed!");
-    }
-  });
+  try {
+    const accountInfo = await connection.getTokenAccountBalance(ata);
+    return parseFloat(accountInfo.value.uiAmountString || "0");
+  } catch (error) {
+    // Account doesn't exist = zero balance
+    return 0;
+  }
 }
+
+// Usage
+const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+const userWallet = new PublicKey(
+  "D9gNZk45fNAgEo5D3KNG5ygqn7Jmvui4tDSVd1RHDA6k",
+);
+const balance = await getTokenBalance(connection, userWallet, USDC_MINT);
+console.log(`USDC Balance: ${balance}`);
 
 export default function Tab() {
   const [logs, setLogs] = useState<string[]>([]);
@@ -125,10 +78,10 @@ export default function Tab() {
       <Text style={styles.title}>MWA Connection Test</Text>
 
       <View style={styles.buttons}>
-        <Button
+        {/* <Button
           title="Test Transaction"
           onPress={() => testSendTransaction(log)}
-        />
+        /> */}
         <Button title="Test Connect" onPress={testConnect} />
         <Button title="Clear Logs" onPress={clearLogs} />
       </View>

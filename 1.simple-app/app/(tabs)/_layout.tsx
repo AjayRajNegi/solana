@@ -44,6 +44,19 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="token"
+        options={{
+          title: "Token",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "timer" : "timer-outline"}
+              color={color}
+              size={24}
+            />
+          ),
+        }}
+      />
       {/* <Tabs.Screen
         name="receive"
         options={{
@@ -57,31 +70,8 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: "History",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "timer" : "timer-outline"}
-              color={color}
-              size={24}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? "person-circle" : "person-circle-outline"}
-              color={color}
-              size={24}
-            />
-          ),
-        }}
+     
+
       /> */}
     </Tabs>
   );
